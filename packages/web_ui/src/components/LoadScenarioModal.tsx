@@ -103,7 +103,7 @@ export default function LoadScenarioModal(props: LoadScenarioModalProps) {
 			confirmLoading={loadingScenario}
 			onOk={loadScenario}
 			onCancel={handleCancel}
-			destroyOnHidden
+			destroyOnClose
 		>
 			<Form form={form} layout="vertical">
 				<Form.Item name="scenario" label="Scenario">

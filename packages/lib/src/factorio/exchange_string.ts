@@ -3,19 +3,11 @@ import zlib from "zlib";
 class MapReaderState {
 	pos = 0;
 	last_position = { x: 0, y: 0 };
-	/** Version of Factorio the string was created with */
-	version = [0, 0, 0, 0];
+	/** True when a version greater than 2.0.0 is detected */
+	v2 = false;
 	constructor(
 		public buf: Buffer
 	) { }
-
-	/** True when the version is at least the given major.minor.patch */
-	versionAtLeast(major: number, minor: number, patch = 0) {
-		const [vMajor, vMinor, vPatch] = this.version;
-		if (vMajor !== major) { return vMajor > major; }
-		if (vMinor !== minor) { return vMinor > minor; }
-		return vPatch >= patch;
-	}
 }
 
 function readUInt8(state: MapReaderState) {
@@ -169,7 +161,7 @@ function readBoundingBox(state: MapReaderState) {
 }
 
 function readCliffSettings(state: MapReaderState) {
-	return state.versionAtLeast(2, 0) ? {
+	return state.v2 ? {
 		name: readString(state),
 		control: readString(state), // v2
 		cliff_elevation_0: readFloat(state),
@@ -194,7 +186,7 @@ function readTerritorySettings(state: MapReaderState) {
 }
 
 function readMapGenSettings(state: MapReaderState) {
-	return state.versionAtLeast(2, 0) ? {
+	return state.v2 ? {
 		autoplace_controls: Object.fromEntries(readDict(state, readString, readFrequencySizeRichness)),
 		autoplace_settings: Object.fromEntries(readDict(state, readString, readAutoplaceSetting)),
 		default_enable_all_autoplace_controls: readBool(state),
@@ -270,26 +262,7 @@ function readEnemyEvolution(state: MapReaderState) {
 }
 
 function readEnemyExpansion(state: MapReaderState) {
-	return state.versionAtLeast(2, 1) ? {
-		enabled: readOptional(state, readBool),
-		max_expansion_distance: readOptional(state, readUInt32),
-		min_expansion_distance: readOptional(state, readUInt32), // v2.1
-		friendly_base_influence_radius: readOptional(state, readUInt32),
-		enemy_building_influence_radius: readOptional(state, readUInt32),
-		building_coefficient: readOptional(state, readDouble),
-		other_base_coefficient: readOptional(state, readDouble),
-		neighbouring_chunk_coefficient: readOptional(state, readDouble),
-		neighbouring_base_chunk_coefficient: readOptional(state, readDouble),
-		max_colliding_tiles_coefficient: readOptional(state, readDouble),
-		settler_group_min_size: readOptional(state, readUInt32),
-		settler_group_max_size: readOptional(state, readUInt32),
-		evolution_group_size_factor: readOptional(state, readDouble), // v2.1
-		min_expansion_cooldown: readOptional(state, readUInt32),
-		max_expansion_cooldown: readOptional(state, readUInt32),
-		...state.versionAtLeast(2, 1, 13) ? {
-			build_base_unit_dispatch_cooldown: readOptional(state, readUInt32), // v2.1.13
-		} : {},
-	} : {
+	return {
 		enabled: readOptional(state, readBool),
 		max_expansion_distance: readOptional(state, readUInt32),
 		friendly_base_influence_radius: readOptional(state, readUInt32),
@@ -363,7 +336,7 @@ function readPathFinder(state: MapReaderState) {
 }
 
 function readDifficultySettings(state: MapReaderState) {
-	return state.versionAtLeast(2, 0) ? {
+	return state.v2 ? {
 		technology_price_multiplier: readDouble(state),
 		spoil_time_modifier: readDouble(state), // v2
 	} : {
@@ -382,32 +355,17 @@ function readAsteroids(state: MapReaderState) {
 }
 
 function readMapSettings(state: MapReaderState) {
-	if (state.versionAtLeast(2, 1)) {
-		return {
-			pollution: readPollution(state),
-			// steering removed v2.1
-			enemy_evolution: readEnemyEvolution(state),
-			enemy_expansion: readEnemyExpansion(state),
-			unit_group: readUnitGroup(state),
-			path_finder: readPathFinder(state),
-			max_failed_behavior_count: readUInt32(state),
-			difficulty_settings: readDifficultySettings(state),
-			asteroids: readAsteroids(state), // v2
-		};
-	} else if (state.versionAtLeast(2, 0)) {
-		return {
-			pollution: readPollution(state),
-			steering: readSteering(state),
-			enemy_evolution: readEnemyEvolution(state),
-			enemy_expansion: readEnemyExpansion(state),
-			unit_group: readUnitGroup(state),
-			path_finder: readPathFinder(state),
-			max_failed_behavior_count: readUInt32(state),
-			difficulty_settings: readDifficultySettings(state),
-			asteroids: readAsteroids(state), // v2
-		};
-	}
-	return {
+	return state.v2 ? {
+		pollution: readPollution(state),
+		steering: readSteering(state),
+		enemy_evolution: readEnemyEvolution(state),
+		enemy_expansion: readEnemyExpansion(state),
+		unit_group: readUnitGroup(state),
+		path_finder: readPathFinder(state),
+		max_failed_behavior_count: readUInt32(state),
+		difficulty_settings: readDifficultySettings(state),
+		asteroids: readAsteroids(state), // v2
+	} : {
 		pollution: readPollution(state),
 		steering: readSteering(state),
 		enemy_evolution: readEnemyEvolution(state),
@@ -468,7 +426,7 @@ export function readMapExchangeString(exchangeString: string) {
 
 	try {
 		const version = readVersion(state);
-		state.version = version;
+		state.v2 = version[0] >= 2;
 		data = {
 			version: version,
 			unknown: readUInt8(state),

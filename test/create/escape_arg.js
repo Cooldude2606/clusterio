@@ -8,9 +8,10 @@ const { escapeArg } = require("../../packages/create/escape_arg");
 const execFile = util.promisify(child_process.execFile);
 
 async function exec(file, args) {
-	const command = [file, ...args.map(escapeArg)].join(" ");
 	const { stdout, stderr } = await execFile(
-		command,
+		file,
+		args.map(escapeArg),
+
 		{ shell: true, cwd: __dirname, env: { ...process.env, pct: "%"} }
 	);
 	return { stdout: JSON.parse(stdout), stderr };

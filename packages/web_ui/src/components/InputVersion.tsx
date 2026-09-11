@@ -23,7 +23,6 @@ function InputVersion<
 ) {
 	const fieldDefinition = props.fieldDefinition || defaultFieldDefinition;
 	const [versions, setVersions] = useState<readonly string[]>(lib.ApiVersions);
-	const [channels, setChannels] = useState<{ name: string, version: string }[]>([]);
 	const [customVersion, setCustomVersion] = useState("");
 	const [open, setOpen] = useState(false);
 	const inputRef = useRef<InputRef>(null);
@@ -36,21 +35,6 @@ function InputVersion<
 			if (account.hasPermission("core.external.get_factorio_versions")) {
 				const res = await control.factorioVersions.get(5 * 60 * 1000);
 				setVersions(res.map(v => v.version));
-			}
-		})();
-	}, [control]);
-
-	// Release channels (e.g. stable, experimental) only apply to target versions
-	useEffect(() => {
-		(async () => {
-			if (props.version.includeLatest && account.hasPermission("core.external.get_latest_releases")) {
-				const res = await control.latestReleases.get(5 * 60 * 1000);
-				// Read the headless build's version directly rather than via a lib
-				// helper: lib is a federation-shared module here and unused exports
-				// can be tree-shaken out of it.
-				setChannels(Object.entries(res).map(([name, builds]) => (
-					{ name, version: builds.headless ?? Object.values(builds)[0] ?? "" }
-				)));
 			}
 		})();
 	}, [control]);
@@ -74,10 +58,7 @@ function InputVersion<
 			title: majorMinor,
 			value: majorMinor,
 			key: majorMinor,
-			// Skip a patch equal to the group key (a bare major.minor version,
-			// e.g. the ApiVersions fallback): the selectable group node already
-			// represents it, and a duplicate value warns in the TreeSelect.
-			children: patchVersions.filter((v) => v !== majorMinor).map((v) => ({
+			children: patchVersions.map((v) => ({
 				title: v,
 				value: v,
 				key: v,
@@ -85,17 +66,9 @@ function InputVersion<
 		}
 	));
 
-	// Add "latest" and release channel options for TargetVersion
+	// Add "latest" option for TargetVersion
 	if (props.version.includeLatest) {
-		tree.unshift(
-			{ title: "latest", value: "latest", key: "latest", children: [] },
-			...channels.map(({ name, version }) => ({
-				title: version ? `${name} (${version})` : name,
-				value: name,
-				key: name,
-				children: [],
-			})),
-		);
+		tree.unshift({ title: "latest", value: "latest", key: "latest", children: [] });
 	}
 
 	return <TreeSelect

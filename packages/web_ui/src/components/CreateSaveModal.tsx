@@ -106,7 +106,7 @@ export default function CreateSaveModal(props: CreateSaveModalProps) {
 			confirmLoading={creatingSave}
 			onOk={createSave}
 			onCancel={handleCancel}
-			destroyOnHidden
+			destroyOnClose
 		>
 			<Form form={form} layout="vertical">
 				<Form.Item name="saveName" label="Save Name">

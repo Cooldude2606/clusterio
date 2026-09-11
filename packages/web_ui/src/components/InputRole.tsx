@@ -4,7 +4,7 @@ import { InputComponentProps } from "../BaseWebPlugin";
 import { useRoles } from "../model/roles";
 
 export default function InputRole(props: InputComponentProps) {
-	const [roles, synced] = useRoles();
+	const [roles] = useRoles();
 
 	return <Select
 		showSearch
@@ -17,7 +17,6 @@ export default function InputRole(props: InputComponentProps) {
 			value: role.id,
 		}))}
 		allowClear={props.fieldDefinition.optional}
-		disabled={!synced || props.disabled}
-		loading={!synced}
+		disabled={props.disabled}
 	/>;
 }

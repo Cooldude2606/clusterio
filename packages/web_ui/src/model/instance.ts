@@ -19,17 +19,10 @@ export function useInstanceConfig(id?: number) {
 	const [config, setConfig] = useState(undefined as undefined | Static<typeof Config.jsonSchema>);
 
 	useEffect(() => {
-		setConfig(undefined);
-		if (id === undefined) {
-			return undefined;
+		if (id) {
+			control.send(new InstanceConfigGetRequest(id))
+				.then(conf => setConfig(conf));
 		}
-
-		// Responses for a previous id must not overwrite the current one.
-		let current = true;
-		control.send(new InstanceConfigGetRequest(id))
-			.then(conf => { if (current) { setConfig(conf); } })
-			.catch(() => {}); // Config is optional, the caller falls back to not having it
-		return () => { current = false; };
 	}, [id]);
 
 	return config;

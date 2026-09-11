@@ -9,7 +9,6 @@ import LeftOutlined from "@ant-design/icons/LeftOutlined";
 import * as lib from "@clusterio/lib";
 
 import { useAccount } from "../model/account";
-import useTableQueryState from "../util/useTableQueryState";
 import ControlContext from "./ControlContext";
 import CreateSaveModal from "./CreateSaveModal";
 import SectionHeader from "./SectionHeader";
@@ -120,7 +119,7 @@ function TransferModal(props: ModalProps) {
 			open={open}
 			onOk={() => form.submit()}
 			onCancel={() => setOpen(false)}
-			destroyOnHidden
+			destroyOnClose
 		>
 			<Form
 				form={form}
@@ -205,9 +204,6 @@ export default function SavesList(props: { instance: lib.InstanceDetails }) {
 	let [saves] = useSavesOfInstance(props.instance.id);
 	let [starting, setStarting] = useState(false);
 	let [uploadingFiles, setUploadingFiles] = useState<File[]>([]);
-	const tableState = useTableQueryState<lib.SaveDetails>({
-		namespace: "save", defaultSortKey: "mtimeMs", defaultSortOrder: "descend", pagination: { defaultPageSize: 10 },
-	});
 
 	let hostOffline = ["unassigned", "unknown"].includes(props.instance.status!);
 	const saveTable = <Table
@@ -223,7 +219,6 @@ export default function SavesList(props: { instance: lib.InstanceDetails }) {
 					{save.loadByDefault && <Tooltip title="Save loaded by default"><LeftOutlined /></Tooltip>}
 				</>,
 				sorter: (a, b) => a.name.localeCompare(b.name),
-				sortOrder: tableState.sortOrder("name"),
 			},
 			{
 				title: "Size",
@@ -232,19 +227,16 @@ export default function SavesList(props: { instance: lib.InstanceDetails }) {
 				render: (_, save) => lib.formatBytes(save.size),
 				align: "right",
 				sorter: (a, b) => a.size - b.size,
-				sortOrder: tableState.sortOrder("size"),
 			},
 			{
 				title: "Last Modified",
 				key: "mtimeMs",
 				render: (_, save) => new Date(save.mtimeMs).toLocaleString(),
 				sorter: (a, b) => a.mtimeMs - b.mtimeMs,
-				sortOrder: tableState.sortOrder("mtimeMs"),
+				defaultSortOrder: "descend",
 			},
 		]}
 		dataSource={[...saves.values()]}
-		pagination={tableState.pagination}
-		onChange={tableState.onChange}
 		rowKey={save => save.name}
 		expandable={{
 			columnWidth: 33,

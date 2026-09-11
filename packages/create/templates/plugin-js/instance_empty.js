@@ -1,5 +1,11 @@
 "use strict";
+const { BaseInstancePlugin } = require("@clusterio/host");
 
-// This entrypoint is empty because an instance entrypoint must be defined for a module to be injected
-// This requirement may change in the future to allow for standalone modules
-module.exports.default = async function loadInstancePlugin(context) { };
+class InstancePlugin extends BaseInstancePlugin {
+	// This class is empty because an instance plugin must be defined for a module to be injected
+	// This requirement may change in the future to allow for standalone modules
+}
+
+module.exports = {
+	InstancePlugin,
+};

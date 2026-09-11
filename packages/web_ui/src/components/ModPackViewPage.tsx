@@ -11,7 +11,6 @@ import {
 import {
 	ExportOutlined, FileUnknownOutlined, FileExclamationOutlined, FileSyncOutlined,
 	CloseOutlined, DeleteOutlined, ToolOutlined, PlusOutlined, CloudSyncOutlined, CloudDownloadOutlined,
-	LikeOutlined,
 } from "@ant-design/icons";
 
 import type { SorterResult, FilterValue, TableCurrentDataSource } from "antd/es/table/interface";
@@ -78,12 +77,12 @@ function SearchModsTable(props: SearchModsTableProps) {
 	const [modResultPageSize, setModResultPageSize] = useState<number>(10);
 	const [modResultCount, setModResultCount] = useState<number>(2);
 	const [modResultSelectedVersion, setModResultSelectedVersion] = useState<Map<string, number>>(new Map());
-	const [factorioVersion, setFactorioVersion] = useState<lib.MajorMinorVersion | null>(null);
+	const [factorioVersion, setFactorioVersion] = useState<lib.ApiVersion | null>(null);
 
 	// Get a valid factorio version
 	useEffect(() => {
 		try {
-			setFactorioVersion(lib.normaliseMajorMinorVersion(props.modPack.factorioVersion));
+			setFactorioVersion(lib.normaliseApiVersion(props.modPack.factorioVersion));
 		} catch (err) {
 			setFactorioVersion(null);
 		}
@@ -272,7 +271,7 @@ function DownloadDependenciesButton(props: DownloadDependenciesProps) {
 	const [open, setOpen] = useState(false);
 	const [error, setError] = useState<Error | null>(null);
 	const [loading, setLoading] = useState<boolean>(false);
-	const [factorioVersion, setFactorioVersion] = useState<lib.MajorMinorVersion | null>(null);
+	const [factorioVersion, setFactorioVersion] = useState<lib.ApiVersion | null>(null);
 
 	const [mods, setMods] = useState<lib.ModInfo[]>([]); // All resolved mods and dependencies
 	const [missing, setMissing] = useState<lib.ModInfo[]>([]); // Missing mods and dependencies, excluding builtin
@@ -296,7 +295,7 @@ function DownloadDependenciesButton(props: DownloadDependenciesProps) {
 	// Get a valid factorio version
 	useEffect(() => {
 		try {
-			setFactorioVersion(lib.normaliseMajorMinorVersion(props.modPack.factorioVersion));
+			setFactorioVersion(lib.normaliseApiVersion(props.modPack.factorioVersion));
 		} catch (err) {
 			setError(new Error(`Invalid factorio version: ${props.modPack.factorioVersion}`));
 			setFactorioVersion(null);
@@ -404,9 +403,7 @@ function DownloadDependenciesButton(props: DownloadDependenciesProps) {
 		control.send(
 			new lib.ModPortalDownloadRequest(
 				missing.map(mod => ({
-					name: mod.name,
-					// mod.version is the raw version; the equality bound must be canonical.
-					version: new lib.ModVersionEquality("=", mod.normalisedVersion),
+					name: mod.name, version: new lib.ModVersionEquality("=", mod.version),
 				})),
 				factorioVersion,
 			)
@@ -546,7 +543,7 @@ function ModsTable(props: ModsTableProps) {
 		}
 	}
 
-	let mods = [...props.modPack.mods.values(), ...deletedMods.values()].map(
+	const mods = [...props.modPack.mods.values(), ...deletedMods.values()].map(
 		(mod: lib.ModRecord): lib.ModRecord => {
 			if (props.builtInModNames.includes(mod.name)) {
 				return {
@@ -580,8 +577,8 @@ function ModsTable(props: ModsTableProps) {
 		if (mod.enabled && mod.info) {
 			mod.warning = mod.info.checkDependencySatisfaction(mods.filter(m => m.enabled));
 			try {
-				const packFactorioVersion = lib.normaliseMajorMinorVersion(props.modPack.factorioVersion);
-				const modFactorioVersion = mod.info.factorioVersion;
+				const packFactorioVersion = lib.normaliseApiVersion(props.modPack.factorioVersion);
+				const modFactorioVersion = lib.normaliseApiVersion(mod.info.factorioVersion);
 				if (packFactorioVersion !== modFactorioVersion) {
 					mod.warning = "wrong_factorio_version";
 				}
@@ -591,7 +588,6 @@ function ModsTable(props: ModsTableProps) {
 			}
 		}
 	}
-	mods = lib.applyModRecordAdvisories(mods, lib.getInstalledModUpdates(mods, modInfos.values()));
 
 	async function fixDependencyIssues(mod: lib.ModRecord) {
 		if (!mod.info) {
@@ -768,48 +764,27 @@ function ModsTable(props: ModsTableProps) {
 				{
 					title: "Name",
 					key: "name",
-					render: (_, mod: lib.ModRecord) => {
-						const recommendedBy = mod.advisories
-							?.filter(advisory => advisory.type === "recommended_dependency")
-							.map(advisory => advisory.sourceModName) ?? [];
-						const update = mod.advisories
-							?.find(advisory => advisory.type === "update_available");
-						return <>
-							{mod.error === "missing" && <Tooltip title="Mod is missing from storage.">
-								<FileUnknownOutlined style={{ color: "#a61d24" }} />{" "}
-							</Tooltip>}
-							{mod.error === "bad_checksum" && <Tooltip title="Mod checksum mismatch.">
-								<FileExclamationOutlined style={{ color: "#a61d24" }} />{" "}
-							</Tooltip>}
-							{mod.warning === "incompatible" && <Tooltip title="Mod is incompatible with another.">
-								<FileExclamationOutlined style={{ color: "#dd5e14" }} />{" "}
-							</Tooltip>}
-							{mod.warning === "missing_dependency" && <Tooltip title="Mod is missing a dependency.">
-								<FileUnknownOutlined style={{ color: "#dd5e14" }} />{" "}
-							</Tooltip>}
-							{mod.warning === "wrong_version" && <Tooltip
-								title="Mod has wrong dependency version added."
-							>
-								<FileSyncOutlined style={{ color: "#dd5e14" }} />{" "}
-							</Tooltip>}
-							{mod.warning === "wrong_factorio_version" && <Tooltip
-								title="Mod has wrong factorio version."
-							>
-								<FileSyncOutlined style={{ color: "#dd5e14" }} />{" "}
-							</Tooltip>}
-							{recommendedBy.length > 0 && <Tooltip
-								title={`Recommended by ${recommendedBy.join(", ")}, but currently disabled.`}
-							>
-								<LikeOutlined style={{ color: "#0958d9" }} />{" "}
-							</Tooltip>}
-							{update?.type === "update_available" && <Tooltip
-								title={`A newer compatible version (${update.version}) is available.`}
-							>
-								<CloudSyncOutlined style={{ color: "#0958d9" }} />{" "}
-							</Tooltip>}
-							{mod.info?.title || mod.name}
-						</>;
-					},
+					render: (_, mod: lib.ModRecord) => <>
+						{mod.error === "missing" && <Tooltip title="Mod is missing from storage.">
+							<FileUnknownOutlined style={{ color: "#a61d24" }} />{" "}
+						</Tooltip>}
+						{mod.error === "bad_checksum" && <Tooltip title="Mod checksum mismatch.">
+							<FileExclamationOutlined style={{ color: "#a61d24" }} />{" "}
+						</Tooltip>}
+						{mod.warning === "incompatible" && <Tooltip title="Mod is incompatible with another.">
+							<FileExclamationOutlined style={{ color: "#dd5e14" }} />{" "}
+						</Tooltip>}
+						{mod.warning === "missing_dependency" && <Tooltip title="Mod is missing a dependency.">
+							<FileUnknownOutlined style={{ color: "#dd5e14" }} />{" "}
+						</Tooltip>}
+						{mod.warning === "wrong_version" && <Tooltip title="Mod has wrong dependency version added.">
+							<FileSyncOutlined style={{ color: "#dd5e14" }} />{" "}
+						</Tooltip>}
+						{mod.warning === "wrong_factorio_version" && <Tooltip title="Mod has wrong factorio version.">
+							<FileSyncOutlined style={{ color: "#dd5e14" }} />{" "}
+						</Tooltip>}
+						{mod.info?.title || mod.name}
+					</>,
 					defaultSortOrder: "ascend",
 					sorter: (a, b) => strcmp(a.name, b.name),
 				},
@@ -1077,7 +1052,7 @@ function ExportButton(props: { modPack: lib.ModPack }) {
 			open={open}
 			onOk={close}
 			onCancel={close}
-			destroyOnHidden
+			destroyOnClose
 			footer={<Space>
 				<CopyButton content={exportString} />
 				<Button onClick={close}>Close</Button>
@@ -1102,7 +1077,7 @@ function useExportedAsset(modPack: lib.ModPack | undefined, asset: "settings"|"l
 				return;
 			}
 
-			let response = await fetch(`${staticRoot}${assetFilename}`);
+			let response = await fetch(`${staticRoot}static/${assetFilename}`);
 			if (response.ok) {
 				let data = await response.json();
 				setAssetData(asset === "locale" ? new Map(data) : data);

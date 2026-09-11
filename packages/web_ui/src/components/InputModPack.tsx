@@ -5,7 +5,7 @@ import { useModPacks } from "../model/mod_pack";
 import { InputComponentProps } from "../BaseWebPlugin";
 
 export default function InputModPack(props: InputComponentProps) {
-	const [modPacks, synced] = useModPacks();
+	const [modPacks] = useModPacks();
 	return <Select
 		showSearch
 		optionFilterProp="label"
@@ -17,7 +17,6 @@ export default function InputModPack(props: InputComponentProps) {
 			value: modPack.id,
 		}))}
 		allowClear={props.fieldDefinition.optional}
-		disabled={!synced || props.disabled}
-		loading={!synced}
+		disabled={props.disabled}
 	/>;
 }

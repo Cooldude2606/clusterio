@@ -1,5 +1,5 @@
 import * as lib from "@clusterio/lib";
-import type { ControllerPluginContext, InstanceRecord } from "@clusterio/controller";
+import { BaseControllerPlugin, InstanceRecord } from "@clusterio/controller";
 //%if multi_context // Messages requires multi context
 
 import {
@@ -12,58 +12,69 @@ import {
 } from "./messages";
 //%endif
 
-export default async function loadControllerPlugin(context: ControllerPluginContext) {
-	const { controller, logger, plugin } = context;
+export class ControllerPlugin extends BaseControllerPlugin {
 //%if controller & web // Subscribing requires web content and the controller
-	// If needed, replace with loading from database file such as lib.Datastore
-	const exampleDatabase = new Map([["foo", new ExampleSubscribableValue("foo", 0, false)]]);
+	exampleDatabase!: Map<string, ExampleSubscribableValue>;
+	storageDirty = false;
+
 //%endif
-//%if multi_context // Messages requires multi context
+//%if multi_context // Subscribing requires multi context
+	async init() {
+		this.controller.handle(PluginExampleEvent, this.handlePluginExampleEvent.bind(this));
+		this.controller.handle(PluginExampleRequest, this.handlePluginExampleRequest.bind(this));
+//%endif
+//%if controller & web // Subscribing requires web content and the controller
+		this.controller.subscriptions.handle(ExampleSubscribableUpdate, this.handleExampleSubscription.bind(this));
+		// If needed, replace with loading from database file such as lib.Datastore
+		this.exampleDatabase = new Map([["foo", new ExampleSubscribableValue("foo", 0, false)]]);
+//%endif
+//%if multi_context // Subscribing requires multi context
+	}
+//%endif
 
-	controller.handle(PluginExampleEvent, async (event: PluginExampleEvent) => {
-		logger.info(JSON.stringify(event));
-	});
+	async onControllerConfigFieldChanged(field: string, curr: unknown, prev: unknown) {
+		this.logger.info(`controller::onControllerConfigFieldChanged ${field}`);
+	}
+//%if instance
 
-	controller.handle(PluginExampleRequest, async (request: PluginExampleRequest) => {
-		logger.info(JSON.stringify(request));
+	async onInstanceConfigFieldChanged(instance: InstanceRecord, field: string, curr: unknown, prev: unknown) {
+		this.logger.info(`controller::onInstanceConfigFieldChanged ${instance.id} ${field}`);
+	}
+//%endif
+
+	async onSaveData() {
+		this.logger.info("controller::onSaveData");
+	}
+
+	async onShutdown() {
+		this.logger.info("controller::onShutdown");
+	}
+
+	async onPlayerEvent(instance: InstanceRecord, event: lib.PlayerEvent) {
+		this.logger.info(`controller::onPlayerEvent ${instance.id} ${JSON.stringify(event)}`);
+	}
+//%if multi_context
+
+	async handlePluginExampleEvent(event: PluginExampleEvent) {
+		this.logger.info(JSON.stringify(event));
+	}
+
+	async handlePluginExampleRequest(request: PluginExampleRequest) {
+		this.logger.info(JSON.stringify(request));
 		return {
 			myResponseString: request.myString,
 			myResponseNumbers: request.myNumberArray,
 		};
-	});
+	}
 //%endif
 //%if controller & web // Subscribing requires web content and the controller
 
-	controller.subscriptions.handle(ExampleSubscribableUpdate, async (request: lib.SubscriptionRequest) => {
-		logger.info(JSON.stringify(request));
-		const values = [...exampleDatabase.values()].filter(
+	async handleExampleSubscription(request: lib.SubscriptionRequest) {
+		this.logger.info(JSON.stringify(request));
+		const values = [...this.exampleDatabase.values()].filter(
 			value => value.updatedAtMs > request.lastRequestTimeMs,
 		);
 		return values.length ? new ExampleSubscribableUpdate(values) : null;
-	});
+	}
 //%endif
-
-	controller.hooks.controllerConfigFieldChanged.attach(plugin.name, async (field, curr, prev) => {
-		logger.info(`controller::controllerConfigFieldChanged ${field}`);
-	});
-//%if instance
-
-	controller.hooks.instanceConfigFieldChanged.attach(
-		plugin.name, async (instance: InstanceRecord, field, curr, prev) => {
-			logger.info(`controller::instanceConfigFieldChanged ${instance.id} ${field}`);
-		}
-	);
-//%endif
-
-	controller.hooks.save.attach(plugin.name, async () => {
-		logger.info("controller::save");
-	});
-
-	controller.hooks.shutdown.attach(plugin.name, async () => {
-		logger.info("controller::shutdown");
-	});
-
-	controller.hooks.playerEvent.attach(plugin.name, async (instance: InstanceRecord, event: lib.PlayerEvent) => {
-		logger.info(`controller::playerEvent ${instance.id} ${JSON.stringify(event)}`);
-	});
 }

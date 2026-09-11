@@ -1,19 +1,8 @@
 "use strict";
-const os = require("os");
-const { execSync } = require("child_process");
-
 const webpack = require("webpack");
 const { CleanWebpackPlugin } = require("clean-webpack-plugin");
 const { WebpackManifestPlugin } = require("webpack-manifest-plugin");
 const TerserPlugin = require("terser-webpack-plugin");
-
-function getCommitHash() {
-	try {
-		return execSync("git rev-parse --short HEAD").toString().trim();
-	} catch {
-		return "unknown";
-	}
-}
 
 module.exports = (env = {}, argv = {}) => ({
 	mode: argv.mode ?? "development",
@@ -40,10 +29,6 @@ module.exports = (env = {}, argv = {}) => ({
 
 		new webpack.DefinePlugin({
 			"process.env.APP_ENV": JSON.stringify("browser"),
-			"process.env.COMMIT_HASH": JSON.stringify(getCommitHash()),
-			"process.env.BUILD_DATE": JSON.stringify(new Date().toISOString()),
-			"process.env.BUILD_ENV": JSON.stringify(process.env.NODE_ENV ?? "dev"),
-			"process.env.BUILD_OS": JSON.stringify(os.platform()),
 		}),
 
 		// Make sure ant-design icons use the ES variant
@@ -128,14 +113,6 @@ module.exports = (env = {}, argv = {}) => ({
 			{
 				test: /\.png$/,
 				type: "asset/resource",
-			},
-			{
-				test: /\.svg$/,
-				type: "asset/resource",
-			},
-			{
-				test: /\.md$/,
-				type: "asset/source",
 			},
 		],
 	},

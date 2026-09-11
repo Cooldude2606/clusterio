@@ -7,10 +7,8 @@ const mock = require("../../../test/mock");
 const controller = require("../dist/node/controller");
 const instance = require("../dist/node/instance");
 const info = require("../dist/node/index").plugin;
-const { FetchPlayerCodeRequest, SetVerifyCodeRequest, PlayerAuthServer } = require("../dist/node/messages");
-const { testRoundTripJsonSerialisable, testMatrix } = require("../../../test/common");
+const { FetchPlayerCodeRequest, SetVerifyCodeRequest } = require("../dist/node/messages");
 const lib = require("@clusterio/lib");
-
 
 function postJSON(url, body) {
 	return fetch(url, {
@@ -21,44 +19,6 @@ function postJSON(url, body) {
 }
 
 describe("player_auth", function() {
-	describe("messages.js", function() {
-		describe("PlayerAuthServer", function() {
-			it("should be round trip json serialisable", function() {
-				testRoundTripJsonSerialisable(PlayerAuthServer, testMatrix(
-					["server1", "server2"], // name
-					[undefined, "127.0.0.1", "10.0.0.1:1234"], // address
-					[undefined, "1.1.0", "2.0.0"], // version
-				));
-			});
-		});
-
-		describe("FetchPlayerCodeResponse", function() {
-			it("should be round trip json serialisable", function() {
-				testRoundTripJsonSerialisable(FetchPlayerCodeRequest.Response, testMatrix(
-					["abc123", "player-code"], // playerCode
-					["http://localhost", "https://example.com"], // controllerUrl
-				));
-			});
-		});
-
-		describe("FetchPlayerCodeRequest", function() {
-			it("should be round trip json serialisable", function() {
-				testRoundTripJsonSerialisable(FetchPlayerCodeRequest, testMatrix(
-					["player1", "player2"], // player
-				));
-			});
-		});
-
-		describe("SetVerifyCodeRequest", function() {
-			it("should be round trip json serialisable", function() {
-				testRoundTripJsonSerialisable(SetVerifyCodeRequest, testMatrix(
-					["player1", "player2"], // player
-					["code123", "verify456"], // verifyCode
-				));
-			});
-		});
-	});
-
 	describe("controller.js", function() {
 		describe("generateCode()", function() {
 			it("should generate a code of the given length", async function() {
@@ -90,7 +50,6 @@ describe("player_auth", function() {
 				controllerPlugin = await mock.createControllerPlugin(controller.ControllerPlugin, info);
 				controllerPlugin.controller.mockConfigEntries.set("player_auth.code_length", 10);
 				controllerPlugin.controller.mockConfigEntries.set("player_auth.code_timeout", 1);
-				controllerPlugin.controller.mockConfigEntries.set("player_auth.show_connect_address", true);
 				controllerUrl = await controllerPlugin.controller.startServer();
 			});
 			after(async function() {
@@ -101,52 +60,33 @@ describe("player_auth", function() {
 
 			describe("/api/player_auth/servers", function() {
 				it("should return a list of running servers with player_auth loaded", async function() {
-					function addInstance(id, status, load, name, version, gamePort, host=1) {
+					function addInstance(id, status, load, name) {
 						controllerPlugin.controller.instances.records.set(id, {
 							config: {
 								get(field) {
 									if (field === "player_auth.load_plugin") {
 										return load;
-									}
-									if (field === "factorio.settings") {
+									} else if (field === "factorio.settings") {
 										return { name };
-									}
-									if (field === "instance.id") {
+									} else if (field === "instance.id") {
 										return id;
-									}
-									if (field === "instance.assigned_host") {
-										return host;
 									}
 									throw new Error(`field ${field} not implemented`);
 								},
 							},
 							status,
-							gamePort,
-							factorioVersion: version,
 						});
 					}
-
-					addInstance(1, "running", true, "running loaded", "1.1.1", 34197);
-					addInstance(2, "stopped", true, "stopped loaded", "1.1.2", 34197);
-					addInstance(3, "running", false, "running unloaded", "1.1.3", 34197);
-					addInstance(4, "stopped", false, "stopped unloaded", "1.1.4", 34197);
-					addInstance(5, "running", true, undefined, "1.1.5", 34197);
-					addInstance(6, "running", true, "no port", "1.1.6", undefined);
-					addInstance(7, "running", true, "no host", "1.1.7", 34197, null);
-					addInstance(8, "running", true, "invalid host", "1.1.8", 34197, 2);
-					addInstance(9, "running", true, "no version", undefined, 34197);
-
-					controllerPlugin.controller.hosts.set(1, {
-						publicAddress: "127.0.0.1",
-					});
-
+					addInstance(1, "running", true, "running loaded");
+					addInstance(2, "stopped", true, "stopped loaded");
+					addInstance(3, "running", false, "running unloaded");
+					addInstance(4, "stopped", false, "stopped unloaded");
+					addInstance(5, "running", true, undefined);
 					const result = await fetch(`${controllerUrl}/api/player_auth/servers`);
-					assert.deepEqual(await result.json(), [
-						{ name: "running loaded", address: "127.0.0.1:34197", factorioVersion: "1.1.1" },
-						{ name: "unnamed server", address: "127.0.0.1:34197", factorioVersion: "1.1.5" },
-						{ name: "no port", address: "127.0.0.1", factorioVersion: "1.1.6" },
-						{ name: "no version", address: "127.0.0.1:34197" },
-					]);
+					assert.deepEqual(await result.json(), ["running loaded", "unnamed server"]);
+					for (let id of [1, 2, 3, 4, 5]) {
+						controllerPlugin.controller.instances.records.delete(id);
+					}
 				});
 			});
 

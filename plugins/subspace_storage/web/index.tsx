@@ -1,14 +1,15 @@
 import { useContext, useEffect, useState } from "react";
-import { Table } from "antd";
+import { Input, Table, Typography } from "antd";
 
 import {
 	BaseWebPlugin, PageLayout, PageHeader, Control, ControlContext, notifyErrorHandler,
 	useExportLocale, useExportPrototypeMetadata, useDefaultModPack, FactorioIcon,
-	useTableQueryState, useColumnSearch,
 } from "@clusterio/web_ui";
 import { GetStorageRequest, Item, SetStorageSubscriptionRequest, UpdateStorageEvent } from "../messages";
 
 import "./style.css";
+
+const { Paragraph } = Typography;
 
 
 function useStorage(control: Control) {
@@ -36,12 +37,8 @@ function StoragePage() {
 	let itemMetadata = prototypes?.get("item");
 	let fluidMetadata = prototypes?.get("fluid");
 	let storage = useStorage(control);
-	const tableState = useTableQueryState<[string, Item]>({
-		namespace: "storage", defaultSortKey: "quantity", defaultSortOrder: "descend", pagination: false,
-	});
-	const resourceSearch = useColumnSearch<[string, Item]>(
-		tableState, "resource", item => getLocaleName(item[1].name), "Search"
-	);
+	type ItemFilter = ([name, item]: [string, Item]) => boolean;
+	let [filter, setFilter] = useState<null | ItemFilter>(null);
 
 	function getLocaleName(itemName: string) {
 		let localeName = itemName;
@@ -68,34 +65,33 @@ function StoragePage() {
 
 	let numberFormat = new Intl.NumberFormat("en-US");
 
-	// Build the regex the resource search uses: word-boundary anchored, spaces match any gap.
-	function matchesResource(value: string | number | bigint | boolean, item: [string, Item]) {
-		let search = String(value).trim();
-		if (!search) {
-			return true;
-		}
-		search = search.replace(/(^| )(\w)/g, "$1\\b$2").replace(/ +/g, ".*");
-		let filterExpr;
-		try {
-			filterExpr = new RegExp(search, "i");
-		} catch {
-			return true;
-		}
-		return filterExpr.test(getLocaleName(item[1].name)) || filterExpr.test(item[1].name);
-	}
-
 	return <PageLayout nav={[{ name: "Storage" }]}>
 		<PageHeader title="Storage" />
+		<Paragraph>
+			<Input
+				placeholder="Search"
+				onChange={(event) => {
+					let search = event.target.value.trim();
+					if (!search) {
+						setFilter(null);
+						return;
+					}
+					search = search.replace(/(^| )(\w)/g, "$1\\b$2");
+					search = search.replace(/ +/g, ".*");
+					let filterExpr = new RegExp(search, "i");
+					setFilter(() => ((item: [string, Item]) => {
+						let name = getLocaleName(item[1].name);
+						return filterExpr.test(name) || filterExpr.test(item[1].name);
+					}));
+				}}
+			/>
+		</Paragraph>
 		<Table
 			className="subspace-storage-storage"
 			columns={[
 				{
 					title: "Resource",
 					key: "resource",
-					...resourceSearch,
-					onFilter: matchesResource,
-					filteredValue: tableState.filteredValue("resource"),
-					sortOrder: tableState.sortOrder("resource"),
 					sorter: (a, b) => {
 						let aName = getLocaleName(a[1].name);
 						let bName = getLocaleName(b[1].name);
@@ -123,15 +119,14 @@ function StoragePage() {
 					title: "Quantity",
 					key: "quantity",
 					align: "right",
+					defaultSortOrder: "descend",
 					sorter: (a, b) => a[1].count - b[1].count,
-					sortOrder: tableState.sortOrder("quantity"),
 					render: (_, item) => numberFormat.format(item[1].count),
 				},
 			]}
-			dataSource={storage}
+			dataSource={filter ? storage.filter(filter) : storage}
 			rowKey={item => item[0]}
-			pagination={tableState.pagination}
-			onChange={tableState.onChange}
+			pagination={false}
 		/>
 	</PageLayout>;
 }

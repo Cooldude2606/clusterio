@@ -1,4 +1,5 @@
 "use strict";
+const { BaseCtlPlugin } = require("@clusterio/ctl");
 const { CommandTree, Command } = require("@clusterio/lib");
 //%// We do not check for multi context here because it doesn't make sense to have a ctl without messages
 const { PluginExampleEvent, PluginExampleRequest } = require("./messages");
@@ -20,8 +21,12 @@ pluginCommands.add(new Command({
 }));
 
 /* eslint-enable no-console */
-module.exports.default = async function loadCtlPlugin(context) {
-	context.hooks.addCommands.attach(context.plugin.name, async (rootCommand) => {
+class CtlPlugin extends BaseCtlPlugin {
+	async addCommands(rootCommand) {
 		rootCommand.add(pluginCommands);
-	});
+	}
+}
+
+module.exports = {
+	CtlPlugin,
 };

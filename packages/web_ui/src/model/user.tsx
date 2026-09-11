@@ -4,27 +4,20 @@ import ControlContext from "../components/ControlContext";
 
 import * as lib from "@clusterio/lib";
 
-export function getUserStats(user: lib.UserDetails, instanceId?: number) {
+function getInstanceStats(user: lib.UserDetails, instanceId?: number) {
 	if (instanceId === undefined) {
 		return user.playerStats;
 	}
 	return user.instanceStats.get(instanceId);
 }
 
-export function isUserOnline(user: lib.UserDetails, instanceId?: number) {
-	if (instanceId === undefined) {
-		return user.instances && user.instances.size > 0;
-	}
-	return user.instances && user.instances.has(instanceId);
-}
-
-export function calculateFirstSeen(user: lib.UserDetails, instanceId?: number) {
-	const stats = getUserStats(user, instanceId);
+function calculateFirstSeen(user: lib.UserDetails, instanceId?: number) {
+	const stats = getInstanceStats(user, instanceId);
 	return stats?.firstJoinAt?.getTime();
 }
 
-export function calculateLastSeen(user: lib.UserDetails, instanceId?: number) {
-	const stats = getUserStats(user, instanceId);
+function calculateLastSeen(user: lib.UserDetails, instanceId?: number) {
+	const stats = getInstanceStats(user, instanceId);
 	if (!stats) {
 		return undefined;
 	}

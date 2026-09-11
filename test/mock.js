@@ -4,8 +4,7 @@ const http = require("http");
 const express = require("express");
 
 const lib = require("@clusterio/lib");
-const { User, UserManager, UserRecord, InstanceManager, ControllerHooks } = require("@clusterio/controller");
-const { HostHooks, InstanceHooks } = require("@clusterio/host");
+const { User, UserManager, UserRecord, InstanceManager } = require("@clusterio/controller");
 
 const addr = lib.Address.fromShorthand;
 
@@ -125,8 +124,6 @@ class MockInstance extends lib.Link {
 		this.name = "test";
 		this.id = 7357;
 		this.status = "running";
-		this.hooks = new InstanceHooks(this.logger);
-		this.loadedPlugins = new Set();
 		this.mockConfigEntries = new Map([
 			["instance.id", 7357],
 			["factorio.enable_save_patching", true],
@@ -150,8 +147,6 @@ class MockInstance extends lib.Link {
 class MockHost extends lib.Link {
 	constructor() {
 		super(new MockConnector(addr({ hostId: 1 }), addr("controller")));
-		this.hooks = new HostHooks(new MockLogger());
-		this.loadedPlugins = new Set();
 	}
 }
 
@@ -198,8 +193,6 @@ class MockController {
 
 		this.hosts = new lib.KeyValueDatastore();
 		this.handles = new Map();
-		this.hooks = new ControllerHooks(new MockLogger());
-		this.loadedPlugins = new Set();
 	}
 
 	get authSecret() {
@@ -243,7 +236,7 @@ async function createControllerPlugin(ControllerPluginClass, info) {
 async function createInstancePlugin(InstancePluginClass, info) {
 	let instance = new MockInstance();
 	let host = new MockHost();
-	let plugin = new InstancePluginClass(info, instance, host, new MockLogger());
+	let plugin = new InstancePluginClass(info, instance, host);
 	await plugin.init();
 	return plugin;
 }

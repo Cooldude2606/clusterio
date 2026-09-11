@@ -37,7 +37,6 @@ export const dataClasses: (RequestClass<unknown, unknown> | EventClass<unknown>)
 	controller.DebugDumpWsRequest,
 	controller.DebugWsMessageEvent,
 	controller.FactorioVersionsRequest,
-	controller.LatestReleasesRequest,
 
 	subscriptions.SubscriptionRequest,
 
@@ -72,7 +71,6 @@ export const dataClasses: (RequestClass<unknown, unknown> | EventClass<unknown>)
 	instance.InstanceSaveDetailsListRequest,
 	instance.InstanceSaveDetailsUpdatesEvent,
 	instance.InstanceCreateSaveRequest,
-	instance.InstanceSaveGameRequest,
 	instance.InstanceRenameSaveRequest,
 	instance.InstanceCopySaveRequest,
 	instance.InstanceDeleteSaveRequest,

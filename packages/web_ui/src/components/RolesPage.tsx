@@ -11,10 +11,6 @@ import { notifyErrorHandler } from "../util/notify";
 import PageHeader from "./PageHeader";
 import PageLayout from "./PageLayout";
 import PluginExtra from "./PluginExtra";
-import useTableQueryState from "../util/useTableQueryState";
-import useColumnSearch from "../util/useColumnSearch";
-import useRowNavigation from "../util/useRowNavigation";
-import Link from "./Link";
 
 const strcmp = new Intl.Collator(undefined, { numeric: true, sensitivity: "base" }).compare;
 
@@ -49,7 +45,7 @@ function CreateRoleButton() {
 			open={open}
 			onOk={() => { createRole().catch(notifyErrorHandler("Error creating role")); }}
 			onCancel={() => { setOpen(false); }}
-			destroyOnHidden
+			destroyOnClose
 		>
 			<Form form={form}>
 				<Form.Item name="roleName" label="Name">
@@ -65,10 +61,8 @@ function CreateRoleButton() {
 
 export default function RolesPage() {
 	let account = useAccount();
+	let navigate = useNavigate();
 	const [roles] = useRoles();
-	const tableState = useTableQueryState<lib.Role>({ namespace: "role" });
-	const nameSearch = useColumnSearch<lib.Role>(tableState, "name", role => role.name, "Search roles");
-	const rowNav = useRowNavigation();
 
 	return <PageLayout nav={[{ name: "Roles" }]}>
 		<PageHeader
@@ -81,13 +75,6 @@ export default function RolesPage() {
 					title: "Name",
 					dataIndex: "name",
 					sorter: (a, b) => strcmp(a.name, b.name),
-					sortOrder: tableState.sortOrder("name"),
-					filteredValue: tableState.filteredValue("name"),
-					className: "table-link-cell",
-					render: (_, role) => <Link to={`/roles/${role.id}/view`} style={{ color: "inherit" }}>
-						{role.name}
-					</Link>,
-					...nameSearch,
 				},
 				{
 					title: "Description",
@@ -95,10 +82,13 @@ export default function RolesPage() {
 				},
 			]}
 			dataSource={[...roles.values()]}
-			pagination={tableState.pagination}
+			pagination={false}
 			rowKey={role => role.id}
-			onChange={tableState.onChange}
-			onRow={role => rowNav(`/roles/${role.id}/view`)}
+			onRow={(role, rowIndex) => ({
+				onClick: event => {
+					navigate(`/roles/${role.id}/view`);
+				},
+			})}
 		/>
 		<PluginExtra component="RolesPage" />
 	</PageLayout>;

@@ -10,7 +10,6 @@ import InputRole from "./components/InputRole";
 import InputModPack from "./components/InputModPack";
 import { InputTargetVersion, InputPartialVersion, InputFullVersion } from "./components/InputVersion";
 import { Control, ControlConnector } from "./util/websocket";
-import { loadedPluginSetKey } from "./util/pluginSet";
 import * as WebPlugin from "./BaseWebPlugin";
 import { pages } from "./pages";
 
@@ -31,7 +30,7 @@ async function loadScript(url: string) {
 	return result;
 }
 
-async function loadPluginInfos(): Promise<[lib.PluginWebpackEnvInfo[], string]> {
+async function loadPluginInfos(): Promise<lib.PluginWebpackEnvInfo[]> {
 	let response = await fetch(`${webRoot}api/plugins`);
 	let pluginList: lib.PluginWebApi[];
 	if (response.ok) {
@@ -41,7 +40,6 @@ async function loadPluginInfos(): Promise<[lib.PluginWebpackEnvInfo[], string]> 
 		logger.error("Failed to get plugin data, running without plugins");
 		pluginList = [];
 	}
-	let pluginSetKey = loadedPluginSetKey(pluginList);
 
 	let pluginInfos: lib.PluginWebpackEnvInfo[] = [];
 	await __webpack_init_sharing__("default");
@@ -51,7 +49,7 @@ async function loadPluginInfos(): Promise<[lib.PluginWebpackEnvInfo[], string]> 
 			continue;
 		}
 		try {
-			await loadScript(`${staticRoot}${meta.web.main}`);
+			await loadScript(`${webRoot}${meta.web.main}`);
 			let container: any = (window as { [key: string]: any })[`plugin_${meta.name}`];
 			if (!container) {
 				throw new Error(`Plugin did not expose its container via plugin_${meta.name}`);
@@ -76,7 +74,7 @@ async function loadPluginInfos(): Promise<[lib.PluginWebpackEnvInfo[], string]> 
 			}
 		}
 	}
-	return [pluginInfos, pluginSetKey];
+	return pluginInfos;
 }
 
 async function loadPlugins(
@@ -207,14 +205,14 @@ export default async function bootstrap() {
 		level: "verbose",
 		format: new WebConsoleFormat(),
 	}));
-	const [pluginInfos, pluginSetKey] = await loadPluginInfos();
+	const pluginInfos = await loadPluginInfos();
 	const pluginInfoEntries = pluginInfos.map(p => [p.name, p] as const);
 	lib.registerPluginMessages(pluginInfos);
 	lib.addPluginConfigFields(pluginInfos);
 
 	let wsUrl = new URL(webRoot, document.location.href);
 	let controlConnector = new ControlConnector(wsUrl.href, 120);
-	let control = new Control(controlConnector, new Map(pluginInfoEntries), pluginSetKey);
+	let control = new Control(controlConnector, new Map(pluginInfoEntries));
 	control.plugins = await loadPlugins(pluginInfos, control);
 	control.loadedPlugins = new Map(pluginInfoEntries.filter(
 		([_, info]) => info.enabled && info.webEntrypoint && !info.error

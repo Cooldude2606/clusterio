@@ -2,9 +2,6 @@ import React from "react";
 import { Button, Card, Flex, Image, Typography } from "antd";
 
 import example from "../images/console-error-edge.png";
-import DiscordLogo from "../images/discord.svg";
-import GitHubLogo from "../images/github.svg";
-
 import PageLayout from "./PageLayout";
 import type { ErrorProps } from "./App";
 
@@ -41,12 +38,12 @@ export default function ErrorPage(props: ErrorProps & { throw?: boolean }) {
 			<SupportLinkCard
 				name="Github Issues"
 				href="https://github.com/clusterio/clusterio/issues"
-				image={GitHubLogo}
+				image="https://github.githubassets.com/favicons/favicon-dark.svg"
 			/>
 			<SupportLinkCard
 				name="Support Server"
 				href="https://discord.gg/mzAsgnm"
-				image={DiscordLogo}
+				image="https://cdn.prod.website-files.com/6257adef93867e50d84d30e2/66e3d7f4ef6498ac018f2c55_Symbol.svg"
 			/>
 		</Flex>
 		<br/>

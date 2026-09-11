@@ -132,7 +132,6 @@ function auth.add_commands()
 		end
 
 		if event.parameter then
-			--- @type string[]
 			local args = {}
 			for w in string.gmatch(event.parameter, "[^ ]+") do
 				args[#args + 1] = w
@@ -150,7 +149,7 @@ function auth.add_commands()
 				end
 
 				local player_name, url, code = table.unpack(args)
-				local player = game.get_player(player_name)
+				local player = game.players[player_name]
 				if not player then
 					rcon.print("Player " .. player_name .. " does not exist")
 					return
@@ -160,7 +159,7 @@ function auth.add_commands()
 
 			elseif command == "code_set" then
 				local player_name = args[1]
-				local player = game.get_player(player_name)
+				local player = game.players[player_name]
 				if not player then
 					rcon.print("Player " .. player_name .. " does not exist")
 					return
@@ -172,7 +171,7 @@ function auth.add_commands()
 
 			elseif command == "error" then
 				local player_name = table.remove(args, 1)
-				local player = game.get_player(player_name)
+				local player = game.players[player_name]
 				if not player then
 					rcon.print("Player " .. player_name .. " does not exist")
 					return
@@ -193,12 +192,10 @@ auth.events[defines.events.on_gui_click] = function(event)
 	end
 
 	if event.element.name == "player_auth_dialog_close_button" then
-		local parent = assert(event.element.parent)
-		assert(parent.parent).destroy()
+		event.element.parent.parent.destroy()
 
 	elseif event.element.name == "player_auth_verify_code_button" then
-		local parent = assert(event.element.parent)
-		local verify_code = assert(parent.player_auth_verify_code_input).text
+		local verify_code = event.element.parent.player_auth_verify_code_input.text
 		local player_name = game.players[event.player_index].name
 		clusterio_api.send_json("player_auth", {
 			type = "set_verify_code",

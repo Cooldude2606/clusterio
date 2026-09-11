@@ -3,4 +3,3 @@
  * @module lib/external
  */
 export * from "./FactorioVersions";
-export * from "./LatestReleases";
